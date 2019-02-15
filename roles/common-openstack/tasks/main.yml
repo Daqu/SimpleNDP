@@ -1,0 +1,45 @@
+---
+# tasks file for common-openstack
+- name: Install software-properties-common
+  apt:
+    name: software-properties-common
+  tags:
+    - common-openstack
+
+- name: Install ubuntu cloud keyring
+  apt:
+    pkg: ubuntu-cloud-keyring
+    state: present
+  tags:
+    - common-openstack
+
+- name: Add repo
+  apt_repository:
+    repo: 'deb http://ubuntu-cloud.archive.canonical.com/ubuntu {{ ubuntu_version_name }}-updates/{{ openstack_version_name }} main'
+    state: present
+    update_cache: yes
+  tags:
+    - common-openstack
+
+- name: Install openstack client
+  apt:
+    pkg: python-openstackclient
+    state: present
+    update_cache: yes
+  tags:
+    - common-openstack
+
+- name: Remove old openstack sdk
+  apt:
+    pkg: python-openstacksdk
+    state: absent
+    update_cache: yes
+  tags:
+    - common-openstack
+
+- name: Install newest openstack sdk
+  pip:
+    name: openstacksdk
+    state: present
+  tags:
+    - common-openstack

@@ -1,0 +1,104 @@
+---
+- name: Create swift config directory
+  file:
+    path: /etc/swift
+    state: directory
+  tags:
+    - swift-storage
+
+- name: remove simple config for swift storage
+  file:
+    path: /etc/swift/{{item}}-server.conf
+    state: absent
+  loop:
+    - account
+    - container
+    - object
+  tags:
+    - swift-storage
+
+- name: Download config for swift storage node
+  get_url:
+    url: https://git.openstack.org/cgit/openstack/swift/plain/etc/{{item}}-server.conf-sample?h=stable/{{ openstack_version_name }}
+    dest: /etc/swift/{{item}}-server.conf
+  loop:
+    - account
+    - container
+    - object
+  tags:
+    - swift-storage
+
+- name: Configure swift storage node
+  ini_file:
+    path: /etc/swift/{{ item.name }}-server.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    backup: no
+  loop:
+    # account
+    - {name: "account", section: "DEFAULT", option: "bind_ip", value: "0.0.0.0"}
+    - {name: "account", section: "DEFAULT", option: "bind_port", value: "6202"}
+    - {name: "account", section: "DEFAULT", option: "user", value: "swift"}
+    - {name: "account", section: "DEFAULT", option: "swift_dir", value: "/etc/swift"}
+    - {name: "account", section: "DEFAULT", option: "devices", value: "/srv/node"}
+    - {name: "account", section: "DEFAULT", option: "mount_check", value: "True"}
+    - {name: "account", section: "pipeline:main", option: "pipeline", value: "healthcheck recon account-server"}
+    - {name: "account", section: "filter:recon", option: "recon_cache_path", value: "/var/cache/swift"}
+    # container
+    - {name: "container", section: "DEFAULT", option: "bind_ip", value: "0.0.0.0"}
+    - {name: "container", section: "DEFAULT", option: "bind_port", value: "6201"}
+    - {name: "container", section: "DEFAULT", option: "user", value: "swift"}
+    - {name: "container", section: "DEFAULT", option: "swift_dir", value: "/etc/swift"}
+    - {name: "container", section: "DEFAULT", option: "devices", value: "/srv/node"}
+    - {name: "container", section: "DEFAULT", option: "mount_check", value: "True"}
+    - {name: "container", section: "pipeline:main", option: "pipeline", value: "healthcheck recon container-server"}
+    - {name: "container", section: "filter:recon", option: "recon_cache_path", value: "/var/cache/swift"}
+    # object
+    - {name: "object", section: "DEFAULT", option: "bind_ip", value: "0.0.0.0"}
+    - {name: "object", section: "DEFAULT", option: "bind_port", value: "6200"}
+    - {name: "object", section: "DEFAULT", option: "user", value: "swift"}
+    - {name: "object", section: "DEFAULT", option: "swift_dir", value: "/etc/swift"}
+    - {name: "object", section: "DEFAULT", option: "devices", value: "/srv/node"}
+    - {name: "object", section: "DEFAULT", option: "mount_check", value: "True"}
+    - {name: "object", section: "pipeline:main", option: "pipeline", value: "healthcheck recon object-server"}
+    - {name: "object", section: "filter:recon", option: "recon_cache_path", value: "/var/cache/swift"}
+    - {name: "object", section: "filter:recon", option: "recon_lock_path", value: "/var/lock"}
+  tags:
+    - swift-storage
+
+- name: Create group swift
+  group:
+    name: swift
+    state: present
+  tags:
+    - swift-storage
+
+- name: Create user swift and add it in swift group
+  user:
+    name: swift
+    group: swift
+  tags:
+    - swift-storage
+
+- name: Ensure proper ownership of the mount point directory structure
+  file:
+    path: /srv/node
+    recurse: yes
+    owner: swift
+    group: swift
+    state: directory
+  tags:
+    - swift-storage
+
+- name: Create the recon directory and ensure proper ownership of it
+  file:
+    path: /var/cache/swift
+    recurse: yes
+    owner: root
+    group: swift
+    state: directory
+    mode: 775
+  tags:
+    - swift-storage
+

@@ -1,0 +1,11 @@
+---
+# tasks file for swift-proxy-leader
+- name: Create swift ring
+  include_tasks: ring.yml
+  tags:
+    - swift-ring
+
+- name: finalize Swift Cluster
+  include_tasks: finalization.yml
+  tags:
+    - swift-finalization

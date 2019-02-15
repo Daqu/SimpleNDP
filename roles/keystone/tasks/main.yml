@@ -1,0 +1,16 @@
+---
+# tasks file for keystone
+- name: Install maridb for openstack 
+  include_tasks: mariadb.yml
+  tags:
+    - keystone
+
+- name: Deploy keystone
+  include_tasks: keystone.yml
+  tags:
+    - keystone
+
+- name: Config keystone 
+  include_tasks: finalization.yml
+  tags:
+    - keystone

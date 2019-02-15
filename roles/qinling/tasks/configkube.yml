@@ -1,0 +1,119 @@
+---
+- name: Download cfssl
+  get_url:
+    url : "{{item.url}}"
+    dest: "{{item.dest}}"
+  loop:
+    - {url: "https://pkg.cfssl.org/R1.2/cfssl_linux-amd64", dest: "/tmp/cfssl"}
+    - {url: "https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64", dest: "/tmp/cfssljson"}
+  tags:
+    - qinling
+
+- name: prepare cfssl
+  file:
+    name : "{{item}}"
+    mode: "a+x"
+  loop:
+    - "/tmp/cfssl"
+    - "/tmp/cfssljson"
+  tags:
+    - qinling
+
+- name: Create certs directory
+  file:
+    name: "/tmp/certs"
+    recurse: yes
+    state: directory
+  tags:
+    - qinling
+
+- name: Download cfssl config
+  get_url:
+    url : "{{item.url}}"
+    dest: "{{item.dest}}"
+  loop:
+    - {url: "https://raw.githubusercontent.com/openstack/qinling/master/example/kubernetes/cfssl-ca-config.json", dest: "/tmp/certs/cfssl-ca-config.json"}
+    - {url: "https://raw.githubusercontent.com/openstack/qinling/master/example/kubernetes/cfssl-client-csr.json", dest: "/tmp/certs/cfssl-client-csr.json"}
+  tags:
+    - qinling
+
+- name: Create client certificates' directory for Qinling
+  file:
+    name: "/etc/qinling/pki/{{item}}"
+    state: directory
+    recurse: yes
+  loop:
+    - kubernetes
+    - etcd
+  tags:
+    - qinling
+
+- name: Generate kubernetes client certificates for Qinling
+  shell: "/tmp/cfssl gencert -ca={{K8S_CA_CERT}} -ca-key={{K8S_CA_KEY}} -config=/tmp/certs/cfssl-ca-config.json -profile=client /tmp/certs/cfssl-client-csr.json | /tmp/cfssljson -bare k8s-client"
+  tags:
+    - qinling
+
+- name: Generate etcd client certificates for Qinling
+  shell: "/tmp/cfssl gencert -ca={{ETCD_CA_CERT}} -ca-key={{ETCD_CA_KEY}} -config=/tmp/certs/cfssl-ca-config.json -profile=client /tmp/certs/cfssl-client-csr.json | /tmp/cfssljson -bare etcd-client"
+  tags:
+    - qinling
+
+# - name: Move the certificates to the pre-defined locations in the config file
+#   copy:
+#     src: "/root/{{item.src}}"
+#     dest: "{{item.dest}}"
+#   loop:
+#     - {src: "k8s-client-key.pem", dest: "/etc/qinling/pki/kubernetes/qinling.key"}
+#     - {src: "k8s-client.pem", dest: "/etc/qinling/pki/kubernetes/qinling.crt"}
+#     - {src: "etcd-client-key.pem", dest: "/etc/qinling/pki/etcd/qinling-etcd-client.key"}
+#     - {src: "etcd-client.pem", dest: "/etc/qinling/pki/etcd/qinling-etcd-client.crt"}
+#     - {src: "{{K8S_CA_CERT}}", dest: "/etc/qinling/pki/kubernetes/ca.crt"}
+#     - {src: "{{ETCD_CA_CERT}}", dest: "/etc/qinling/pki/etcd/ca.crt"}
+#   tags:
+#     - qinling
+
+- name: Render file for moving Qinling config
+  template:
+    src: move_gem.sh.jinja2
+    dest: /tmp/move_gem.sh
+  tags:
+  - qinling
+
+- name: move qinling config
+  shell: bash /tmp/move_gem.sh
+  tags:
+  - qinling
+
+- name: Ensure the qinling service user has the permission to those locations
+  file:
+    name: "/etc/qinling/pki"
+    owner: "{{QINLING_SERVICE_USER}}"
+    group: "{{QINLING_SERVICE_USER}}"
+    recurse: yes
+  tags:
+    - qinling
+
+- name: Download k8s_qinling_role
+  get_url:
+    url : "https://raw.githubusercontent.com/openstack/qinling/master/example/kubernetes/k8s_qinling_role.yaml"
+    dest: "/tmp/k8s_qinling_role.yaml"
+  tags:
+    - qinling
+
+- name: Apply k8s_qinling_role
+  shell: "kubectl apply -f /tmp/k8s_qinling_role.yaml"
+  tags:
+    - qinling
+
+- name: Config basic qinling setting for k8s
+  ini_file:
+    path: /etc/qinling/qinling.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    backup: no
+  loop:
+    - {section: "kubernetes", option: "kube_host", value: "https://{{ ansible_facts['default_ipv4']['address'] }}:8080/"}
+    - {section: "etcd", option: "host", value: "{{ ansible_facts['default_ipv4']['address'] }}"}
+  tags:
+    - qinling

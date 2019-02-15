@@ -1,0 +1,73 @@
+---
+
+# - name: Render swift-account-init.sh
+#   template:
+#     src: swift-account-init.sh.jinja2
+#     dest: /tmp/swift-account-init.sh
+#   tags:
+#     - swift-proxy
+
+# - name: Creat swift project in keystone
+#   shell: bash /tmp/swift-account-init.sh
+#   environment: "{{ admin_env }}"
+#   tags:
+#   - swift-proxy
+
+- name: Create the swift user
+  os_user:
+    name: swift
+    domain: default
+    password: "{{ swift_password }}"
+    state: present
+    enabled: yes
+  environment: "{{ admin_env }}"
+  tags:
+    - swift-proxy
+
+- name: Add the admin role to the swift user
+  os_user_role:
+    state: present
+    user: swift
+    role: admin
+    project: service
+  environment: "{{ admin_env }}"
+  tags:
+    - swift-proxy
+
+- name: Create the swift service project
+  os_keystone_service:
+    state: present
+    name: swift
+    service_type: object-store
+    description: OpenStack Object Storage
+  environment: "{{ admin_env }}"
+  tags:
+    - swift-proxy
+
+- name: Create swift endpoint
+  os_keystone_endpoint:
+    service: swift
+    endpoint_interface: "{{ item.interface }}"
+    url: "{{ item.url }}"
+    region: RegionOne
+    state: present
+  environment: "{{ admin_env }}"
+  loop:
+    - { interface: 'public', url: "http://{{ ansible_facts['default_ipv4']['address'] }}:8080/v1/AUTH_%(tenant_id)s"}
+    - { interface: 'internal', url: "http://{{ ansible_facts['default_ipv4']['address'] }}:8080/v1/AUTH_%(tenant_id)s"}
+    - { interface: 'admin', url: "http://{{ ansible_facts['default_ipv4']['address'] }}:8080/v1"}
+  tags:
+    - swift-proxy
+
+- name: Install swift
+  apt: 
+    name: "{{ item }}"
+  loop:
+    - swift
+    - swift-proxy
+    - python-swiftclient
+    - python-keystoneclient
+    - python-keystonemiddleware
+    - memcached
+  tags:
+    - swift-proxy

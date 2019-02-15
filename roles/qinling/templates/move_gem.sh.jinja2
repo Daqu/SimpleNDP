@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+cp k8s-client-key.pem /etc/qinling/pki/kubernetes/qinling.key
+
+cp k8s-client.pem /etc/qinling/pki/kubernetes/qinling.crt
+
+cp etcd-client-key.pem /etc/qinling/pki/etcd/qinling-etcd-client.key
+
+cp etcd-client.pem /etc/qinling/pki/etcd/qinling-etcd-client.crt
+
+cp {{K8S_CA_CERT}} /etc/qinling/pki/kubernetes/ca.crt
+
+cp {{ETCD_CA_CERT}} /etc/qinling/pki/etcd/ca.crt

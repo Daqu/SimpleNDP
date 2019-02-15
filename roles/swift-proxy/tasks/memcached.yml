@@ -1,0 +1,26 @@
+---
+- name: Install memcached
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - memcached
+    - python-memcache
+  tags:
+  - memcached
+
+- name: Config memcached
+  lineinfile:
+    path: /etc/memcached.conf
+    regexp: '^-l'
+    line: '-l 0.0.0.0'
+  tags:
+  - memcached
+
+- name: Enable memcached
+  service:
+    name: memcached
+    state: restarted
+    enabled: yes
+  tags:
+  - memcached

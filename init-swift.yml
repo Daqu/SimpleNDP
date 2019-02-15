@@ -1,0 +1,89 @@
+---
+- hosts: keystone
+  become: yes
+  become_user: root
+  roles:
+    - keystone
+
+- hosts: swift-proxy
+  become: yes
+  become_user: root
+  roles:
+    - swift-proxy
+
+- hosts: swift-proxy-leader
+  become: yes
+  become_user: root
+  roles:
+    - swift-proxy-leader
+
+- hosts: swift-storage
+  become: yes
+  become_user: root
+  roles:
+    - swift-storage
+
+- hosts: all:!devices
+  become: yes
+  become_user: root
+  tasks:
+    - name: Ensure proper ownership of the configuration directory
+      file:
+        path: /etc/swift
+        state: directory
+        recurse: true
+        owner: root
+        group: swift
+
+- hosts: swift-proxy-leader
+  become: yes
+  become_user: root
+  tasks:
+    - name: fetch file from swift-proxy-leader
+      fetch:
+        src: /etc/swift/{{ item }}
+        dest: /tmp/{{ item }}
+        flat: yes
+      loop:
+        - account.ring.gz
+        - container.ring.gz
+        - object.ring.gz
+        - swift.conf
+
+- hosts: openstack:!swift-proxy-leader
+  become: yes
+  become_user: root
+  tasks:
+    - name: copy file from swift-proxy-leader
+      copy:
+        src: /tmp/{{ item }}
+        dest: /etc/swift/{{ item }}
+      loop:
+        - account.ring.gz
+        - container.ring.gz
+        - object.ring.gz
+        - swift.conf
+
+- hosts: swift-proxy
+  become: yes
+  become_user: root
+  tasks:
+    - name: Start memcached service
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - memcached
+        - swift-proxy
+  tags:
+    - restart
+
+- hosts: swift-storage
+  become: yes
+  become_user: root
+  tasks:
+    - name: Start swift-storage service
+      shell: "swift-init all start"
+      ignore_errors: yes
+  tags:
+    - restart

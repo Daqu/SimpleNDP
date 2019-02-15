@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+curl -L https://pkg.cfssl.org/R1.2/cfssl_linux-amd64 -o /tmp/cfssl
+chmod +x /tmp/cfssl
+curl -L https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64 -o /tmp/cfssljson
+chmod +x /tmp/cfssljson
+
+mkdir -p /tmp/certs; cd /tmp/certs
+curl -SL https://raw.githubusercontent.com/openstack/qinling/master/example/kubernetes/cfssl-ca-config.json -o /tmp/certs/cfssl-ca-config.json
+curl -SL https://raw.githubusercontent.com/openstack/qinling/master/example/kubernetes/cfssl-client-csr.json -o /tmp/certs/cfssl-client-csr.json
+
+/tmp/cfssl gencert -ca=${K8S_CA_CERT} -ca-key=${K8S_CA_KEY} -config=/tmp/certs/cfssl-ca-config.json -profile=client /tmp/certs/cfssl-client-csr.json | /tmp/cfssljson -bare k8s-client
+/tmp/cfssl gencert -ca=${ETCD_CA_CERT} -ca-key=${ETCD_CA_KEY}  -config=/tmp/certs/cfssl-ca-config.json -profile=client /tmp/certs/cfssl-client-csr.json | /tmp/cfssljson -bare etcd-client

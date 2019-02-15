@@ -1,0 +1,4 @@
+CREATE DATABASE IF NOT EXISTS keystone;
+
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'localhost' IDENTIFIED BY '{{ keystone_db_password }}';
+GRANT ALL PRIVILEGES ON keystone.* TO 'keystone'@'%' IDENTIFIED BY '{{ keystone_db_password }}';

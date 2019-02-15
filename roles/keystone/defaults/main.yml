@@ -1,0 +1,4 @@
+---
+# defaults file for keystone
+keystone_db_password: KEYSTONE_DBPASS
+keystone_admin_password: ADMIN_PASS

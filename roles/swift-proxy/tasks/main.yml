@@ -1,0 +1,16 @@
+---
+# tasks file for swift-proxy
+- name: Install openstack swift proxy service
+  include_tasks: proxy.yml
+  tags:
+    - swift-proxy
+
+- name: Install memcached
+  include_tasks: memcached.yml
+  tags:
+    - swift-proxy
+
+- name: Config openstack swift proxy service
+  include_tasks: config.yml
+  tags:
+    - swift-proxy

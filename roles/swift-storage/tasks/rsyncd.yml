@@ -1,0 +1,17 @@
+---
+- name: Render /etc/rsyncd.conf
+  template:
+    src: rsyncd.conf.jinja2
+    dest: /etc/rsyncd.conf
+  tags:
+    - swift-storage
+
+- name: Enable rsync service
+  lineinfile:
+    path: /etc/default/rsync
+    regexp: '^RSYNC_ENABLE='
+    line: 'RSYNC_ENABLE=true'
+  notify:
+    - Restart rsync
+  tags:
+    - swift-storage

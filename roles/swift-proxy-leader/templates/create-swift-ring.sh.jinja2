@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+swift-ring-builder /etc/swift/account.builder create {{ ring_policy }}
+swift-ring-builder /etc/swift/container.builder create {{ ring_policy }}
+swift-ring-builder /etc/swift/object.builder create {{ ring_policy }}
+
+{% for host in groups['swift-storage'] %}
+    {% for device in groups['devices'] %}
+
+ swift-ring-builder /etc/swift/account.builder add \
+ --region 1 --zone 1 --ip {{ host }} --port 6202 --device {{ device }} --weight 100
+
+ swift-ring-builder /etc/swift/container.builder add \
+ --region 1 --zone 1  --ip {{ host }} --port 6201 --device {{ device }} --weight 100
+
+ swift-ring-builder /etc/swift/object.builder add \
+--region 1 --zone 1  --ip {{ host }} --port 6200 --device {{ device }} --weight 100
+    {% endfor %}
+{% endfor %}
+
+swift-ring-builder /etc/swift/account.builder rebalance
+swift-ring-builder /etc/swift/container.builder rebalance
+swift-ring-builder /etc/swift/object.builder rebalance

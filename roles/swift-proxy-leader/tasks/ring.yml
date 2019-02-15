@@ -1,0 +1,23 @@
+---
+- name: Render swift-ring
+  template:
+    src: create-swift-ring.sh.jinja2
+    dest: /tmp/create-swift-ring.sh
+  tags:
+    - swift-ring
+
+- name: Build swift-ring
+  shell: bash /tmp/create-swift-ring.sh
+  tags:
+    - swift-ring
+
+# - name: Fetch swift-ring file from swift-proxy-leader to local controller
+#   fetch:
+#     dest: /tmp/{{ item }}
+#     src: /etc/swift/{{ item }}
+#   loop:
+#     - account.ring.gz
+#     - container.ring.gz
+#     - object.ring.gz
+#   tags:
+#     - swift-ring

@@ -1,0 +1,6 @@
+---
+- hosts: swift-proxy-leader
+  become: yes
+  become_user: root
+  roles:
+    - qinling

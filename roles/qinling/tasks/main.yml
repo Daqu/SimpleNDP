@@ -1,0 +1,11 @@
+---
+# tasks file for qinling
+- name: Install qinling 
+  include_tasks: install.yml
+  tags:
+    - qinling
+
+- name: Config k8s for qinling
+  include_tasks: configkube.yml
+  tags:
+    - qinling

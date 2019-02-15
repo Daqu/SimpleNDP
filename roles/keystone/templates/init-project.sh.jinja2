@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+openstack project create --domain default --description "Service Project" service
+openstack user create --domain default --password {{ keystone_admin_password }} admin
+openstack role create admin
+openstack role add --project service --user admin admin

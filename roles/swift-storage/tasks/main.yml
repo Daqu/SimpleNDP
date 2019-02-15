@@ -1,0 +1,36 @@
+---
+# tasks file for swift-storage
+- name: Install swift-storage supporting utility packages
+  apt: 
+    name: "{{ item }}"
+  loop:
+    - xfsprogs
+    - rsync
+  tags:
+    - swift-storage
+
+- name: Use loopback file as device
+  include_tasks: loopback.yml
+  tags:
+    - swift-storage
+
+- name: Config rsync
+  include_tasks: rsyncd.yml
+  tags:
+    - swift-storage
+
+- name: Install swift storage packages
+  apt: 
+    name: "{{ item }}"
+  loop:
+    - swift
+    - swift-account
+    - swift-container
+    - swift-object
+  tags:
+    - swift-storage
+
+- name: Config swift storage
+  include_tasks: config.yml
+  tags:
+    - swift-storage

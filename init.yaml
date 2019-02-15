@@ -1,0 +1,22 @@
+---
+# init probiotic
+
+# Push the ssh public key to managed nodes.
+- name: ==> push the ssh public key ...
+  hosts: all:!devices
+  become: yes
+  become_user: root
+  tasks:
+    - name: create ssh key directory
+      file:
+        path: '/root/.ssh/'
+        state: directory
+        owner: 'root'
+        group: 'root'
+        mode: 0700
+
+    - name: install ssh key
+      authorized_key:
+        user: root
+        state: present
+        key: "{{ lookup('file', '/root/.ssh/id_rsa.pub') }}"

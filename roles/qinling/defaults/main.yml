@@ -1,0 +1,22 @@
+---
+# defaults file for qinling
+qinling_db_password: QINLING_DBPASS
+qinling_password: QINLING_PASS
+rabbitmq_pass_for_openstack: RABBIT_PASS
+admin_env:
+  OS_PROJECT_DOMAIN_NAME: Default
+  OS_USER_DOMAIN_NAME: Default
+  OS_PROJECT_NAME: admin
+  OS_USERNAME: admin
+  OS_PASSWORD: "{{ keystone_admin_password }}"
+  OS_AUTH_URL: "http://{{ groups['keystone'][0] }}:5000/v3/"
+  OS_IDENTITY_API_VERSION: 3
+  OS_IMAGE_API_VERSION: 2
+K8S_ADDRESS: "http://{{ groups['keystone'][0] }}"
+ETCD_ADDRESS: "http://{{ groups['keystone'][0] }}"
+QINLING_SERVICE_USER: qinling
+QINLING_ENGINE_ADDRESS: "http://{{ groups['keystone'][0] }}"
+K8S_CA_CERT: "/etc/kubernetes/pki/ca.crt"
+K8S_CA_KEY: "/etc/kubernetes/pki/ca.key"
+ETCD_CA_CERT: "/etc/kubernetes/pki/etcd/ca.crt"
+ETCD_CA_KEY: "/etc/kubernetes/pki/etcd/ca.key"

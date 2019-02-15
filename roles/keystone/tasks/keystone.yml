@@ -1,0 +1,68 @@
+---
+- name: Render the database sql for initing keystone
+  template:
+    src: create_keystone_database.sql.jinja2
+    dest: /tmp/create_keystone_database.sql
+  tags:
+  - keystone
+
+- name: Create the keystone database
+  shell: mysql -u root < /tmp/create_keystone_database.sql
+  tags:
+  - keystone
+
+- name: Install keystone
+  apt: 
+    name: "{{ item }}"
+    state: present
+  loop:
+    - keystone
+    - apache2
+    - libapache2-mod-wsgi
+  tags:
+  - keystone
+
+- name: Config keystone database
+  ini_file:
+    path: /etc/keystone/keystone.conf
+    section: database
+    option: connection
+    value: mysql+pymysql://keystone:{{ keystone_db_password }}@{{ ansible_facts['default_ipv4']['address'] }}/keystone
+    backup: yes
+  tags:
+  - keystone
+
+- name: Config keystone token
+  ini_file:
+    path: /etc/keystone/keystone.conf
+    section: token
+    option: provider
+    value: fernet
+    backup: yes
+  tags:
+  - keystone
+
+- name: Render Bootstrap script for keystone
+  template:
+    src: bootstrap-keystone.sh.jinja2
+    dest: /tmp/bootstrap-keystone.sh
+  tags:
+  - keystone
+
+- name: Bootstrap keystone
+  shell: bash /tmp/bootstrap-keystone.sh
+  tags:
+  - keystone
+
+- name: Config apache ServerName
+  lineinfile:
+    path: /etc/apache2/apache2.conf
+    insertafter: EOF
+    line: ServerName {{ ansible_facts['hostname'] }}
+  notify: 
+    - Restart apache2
+  tags:
+  - keystone
+
+
+  

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+cd /var/lib/qinling && su -s /bin/sh -c "oslo-config-generator --config-file tools/config/config-generator.qinling.conf --output-file etc/qinling.conf.sample" qinling
+cd /var/lib/qinling && su -s /bin/sh -c "cp etc/qinling.conf.sample /etc/qinling/qinling.conf" qinling
+cd /var/lib/qinling && su -s /bin/sh -c "cp etc/policy.json.sample /etc/qinling/policy.json" qinling

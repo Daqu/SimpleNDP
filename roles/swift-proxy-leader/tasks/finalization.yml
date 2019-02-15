@@ -1,0 +1,23 @@
+---
+- name: Obtain the /etc/swift/swift.conf
+  get_url:
+    url: https://git.openstack.org/cgit/openstack/swift/plain/etc/swift.conf-sample?h=stable/{{ openstack_version_name }}
+    dest: /etc/swift/swift.conf
+  tags:
+    - swift-finalization
+
+- name: Config swift hash
+  ini_file:
+    path: /etc/swift/swift.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    backup: no
+  loop:
+    - {section: "swift-hash", option: "swift_hash_path_suffix", value: "{{swift_hash_path_suffix}}"}
+    - {section: "swift-hash", option: "swift_hash_path_prefix", value: "{{swift_hash_path_prefix}}"}
+    - {section: "storage-policy:0", option: "name", value: "Policy-0"}
+    - {section: "storage-policy:0", option: "default", value: "yes"}
+  tags:
+    - swift-finalization
+  

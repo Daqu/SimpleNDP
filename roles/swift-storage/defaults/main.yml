@@ -1,0 +1,5 @@
+---
+# defaults file for swift-storage
+disk_format: xfs
+create_disk: true
+mount_opts: "defaults,noatime,nodiratime,nobarrier,discard,allocsize=256m,logbufs=8,attr2,logbsize=256k"

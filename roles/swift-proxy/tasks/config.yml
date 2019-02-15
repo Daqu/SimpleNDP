@@ -1,0 +1,75 @@
+---
+- name: Create the /etc/swift directory
+  file:
+    path: /etc/swift/
+    state: directory
+  tags:
+    - swift-proxy
+
+- name: Obtain the proxy service configuration file
+  get_url:
+    url: https://git.openstack.org/cgit/openstack/swift/plain/etc/proxy-server.conf-sample?h=stable/{{ openstack_version_name }}
+    dest: /etc/swift/proxy-server.conf
+  tags:
+    - swift-proxy
+
+- name: Configure the bind port, user, and configuration directory
+  ini_file:
+    path: /etc/swift/proxy-server.conf
+    section: DEFAULT
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    backup: no
+  loop:
+    - {option: "bind_ip", value: "0.0.0.0"}
+    - {option: "bind_port", value: "8080"}
+    - {option: "user", value: "swift"}
+    - {option: "swift_dir", value: "/etc/swift"}
+  tags:
+    - swift-proxy
+
+- name: Remove tempauth
+  lineinfile:
+    path: /etc/swift/proxy-server.conf
+    regexp: 'ratelimit tempauth'
+    line: "# to use tempauth, see https://git.openstack.org/cgit/openstack/swift/plain/etc/proxy-server.conf-sample?h=stable/{{ openstack_version_name }}"
+  tags:
+    - swift-proxy
+
+- name: Keystone integration
+  replace:
+    path: /etc/swift/proxy-server.conf
+    regexp: '^#pipeline ='
+    replace: "pipeline ="
+  tags:
+    - swift-proxy
+
+- name: Configure keystone in swift
+  ini_file:
+    path: /etc/swift/proxy-server.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    backup: no
+  loop:
+    - {section: "app:proxy-server", option: "use", value: "egg:swift#proxy"}
+    - {section: "app:proxy-server", option: "account_autocreate", value: "True"}
+    - {section: "filter:keystoneauth", option: "use", value: "egg:swift#keystoneauth"}
+    - {section: "filter:keystoneauth", option: "operator_roles", value: "admin,user"}
+    - {section: "filter:authtoken", option: "paste.filter_factory", value: "keystonemiddleware.auth_token:filter_factory"}
+    - {section: "filter:authtoken", option: "auth_uri", value: "http://{{ ansible_facts['default_ipv4']['address'] }}:5000/v3/"}
+    # - {section: "filter:authtoken", option: "auth_url", value: "http://{{ ansible_facts['default_ipv4']['address'] }}:35537"}
+    - {section: "filter:authtoken", option: "auth_url", value: "http://{{ ansible_facts['default_ipv4']['address'] }}:5000/v3/"}
+    - {section: "filter:authtoken", option: "memcached_servers", value: "{{ ansible_facts['default_ipv4']['address'] }}:11211"}
+    - {section: "filter:authtoken", option: "auth_type", value: "password"}
+    - {section: "filter:authtoken", option: "project_domain_name", value: "default"}
+    - {section: "filter:authtoken", option: "user_domain_name", value: "default"}
+    - {section: "filter:authtoken", option: "project_name", value: "service"}
+    - {section: "filter:authtoken", option: "username", value: "swift"}
+    - {section: "filter:authtoken", option: "password", value: "{{ swift_password }}"}
+    - {section: "filter:authtoken", option: "delay_auth_decision", value: "True"}
+    - {section: "filter:cache", option: "use", value: "egg:swift#memcache"}
+    - {section: "filter:cache", option: "memcache_servers", value: "{{ ansible_facts['default_ipv4']['address'] }}:11211"}
+  tags:
+    - swift-proxy
+

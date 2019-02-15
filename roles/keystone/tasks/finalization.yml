@@ -1,0 +1,46 @@
+---
+- name: Render OpenStack client environment scripts
+  template:
+    src: admin-openrc.jinja2
+    dest: "~/admin-openrc"
+  tags:
+  - keystone
+
+- name: Create the default project
+  os_project:
+    state: present
+    name: service
+    domain_id: default
+    description: Service Project
+  environment: "{{ admin_env }}"
+  tags:
+    - keystone
+
+- name: Create the admin user
+  os_user:
+    name: admin
+    domain: default
+    password: "{{ keystone_admin_password }}"
+    state: present
+    enabled: yes
+  environment: "{{ admin_env }}"
+  tags:
+    - keystone
+
+- name: Create the admin role
+  os_keystone_role:
+    name: admin
+    state: present
+  environment: "{{ admin_env }}"
+  tags:
+    - keystone
+
+- name: Grant the admin role on admin user
+  os_user_role:
+    user: admin
+    role: admin
+    project: service
+    state: present
+  environment: "{{ admin_env }}"
+  tags:
+    - keystone

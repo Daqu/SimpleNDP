@@ -1,0 +1,197 @@
+---
+- name: Install dependencies
+  apt: 
+    name: "{{ item }}"
+  loop:
+    - python3
+    - python-dev
+    - python3-dev
+    - build-essential
+    - libssl-dev
+    - libffi-dev
+    - libxml2-dev
+    - libxslt1-dev
+    - zlib1g-dev
+  tags:
+    - qinling
+
+- name: Install openstackclient
+  pip:
+    name: openstackclient
+  tags:
+    - qinling
+
+- name: Install rabbitmq
+  apt:
+    name: rabbitmq-server
+  tags:
+    - qinling
+
+- name: Add rabbitmq user for openstack
+  rabbitmq_user:
+    user: openstack
+    password: "{{rabbitmq_pass_for_openstack}}"
+    configure_priv: .*
+    read_priv: .*
+    write_priv: .*
+    state: present
+  tags:
+    - qinling
+
+- name: Render the database sql for initing qinling
+  template:
+    src: create_qinling_database.sql.jinja2
+    dest: /tmp/create_qinling_database.sql
+  tags:
+    - qinling
+
+- name: Create the qinling database
+  shell: mysql -u root < /tmp/create_qinling_database.sql
+  tags:
+  - qinling
+
+- name: Create the qinling user
+  os_user:
+    name: qinling
+    domain: default
+    password: "{{ qinling_password }}"
+    state: present
+    enabled: yes
+  environment: "{{ admin_env }}"
+  tags:
+    - qinling
+
+- name: Add the admin role to the qinling user
+  os_user_role:
+    state: present
+    user: qinling
+    role: admin
+    project: service
+  environment: "{{ admin_env }}"
+  tags:
+    - qinling
+
+- name: Create the qinling service project
+  os_keystone_service:
+    state: present
+    name: qinling
+    service_type: function-engine
+    description: Function Service
+  environment: "{{ admin_env }}"
+  tags:
+    - qinling
+
+- name: Create qinling endpoint
+  os_keystone_endpoint:
+    service: qinling
+    endpoint_interface: "{{ item.interface }}"
+    url: "{{ item.url }}"
+    region: RegionOne
+    state: present
+  environment: "{{ admin_env }}"
+  loop:
+    - { interface: 'public', url: "http://{{ ansible_facts['default_ipv4']['address'] }}:7070"}
+    - { interface: 'internal', url: "http://{{ ansible_facts['default_ipv4']['address'] }}:7070"}
+    - { interface: 'admin', url: "http://{{ ansible_facts['default_ipv4']['address'] }}:7070"}
+  tags:
+    - qinling
+
+- name: Create qinling group in system
+  group:
+    name: qinling
+    system: yes
+    state: present
+  tags:
+    - qinling
+
+- name: Create qinling user in system
+  user:
+    name: qinling
+    create_home: True
+    home: "/var/lib/qinling"
+    system: True
+    shell: /bin/false
+    groups: qinling
+    state: present
+  tags:
+    - qinling
+
+- name: Create qinling directories
+  file:
+    name: "{{item}}"
+    state: directory
+    owner: qinling
+    group: qinling
+    recurse: yes
+  loop:
+    - "/etc/qinling"
+    - "/var/lib/qinling/package"
+  tags:
+    - qinling
+
+- name: Download qinling
+  git:
+    repo: https://git.openstack.org/openstack/qinling.git
+    dest: "/var/lib/qinling/qinling"
+  tags:
+    - qinling
+
+- name: Install qinling
+  pip:
+    name: "."
+    chdir: "/var/lib/qinling/qinling"
+    extra_args: "-e"
+  tags:
+    - qinling
+
+- name: Config basic qinling setting
+  ini_file:
+    path: /etc/qinling/qinling.conf
+    section: "{{ item.section }}"
+    option: "{{ item.option }}"
+    value: "{{ item.value }}"
+    backup: no
+  loop:
+    - {section: "DEFAULT", option: "transport_url", value: "rabbit://openstack:{{rabbitmq_pass_for_openstack}}@{{ ansible_facts['default_ipv4']['address'] }}:5672/"}
+    - {section: "api", option: "host", value: "{{ ansible_facts['default_ipv4']['address'] }}"}
+    - {section: "api", option: "port", value: "7070"}
+    - {section: "database", option: "connection", value: "mysql+pymysql://qinling:{{qinling_db_password}}@{{ ansible_facts['default_ipv4']['address'] }}/qinling?charset=utf8"}
+    - {section: "storage", option: "file_system_dir", value: "/var/lib/qinling/package"}
+    - {section: "oslo_policy", option: "policy_file", value: "/etc/qinling/policy.json"}
+    - {section: "keystone_authtoken", option: "memcached_servers", value: "{{ ansible_facts['default_ipv4']['address'] }}:11211"}
+    - {section: "keystone_authtoken", option: "www_authenticate_uri", value: "http://{{ ansible_facts['default_ipv4']['address'] }}:5000/v3"}
+    - {section: "keystone_authtoken", option: "project_domain_name", value: "default"}
+    - {section: "keystone_authtoken", option: "project_name", value: "service"}
+    - {section: "keystone_authtoken", option: "user_domain_name", value: "default"}
+    - {section: "keystone_authtoken", option: "password", value: "{{qinling_password}}"}
+    - {section: "keystone_authtoken", option: "username", value: "qinling"}
+    - {section: "keystone_authtoken", option: "auth_url", value: "http://{{ ansible_facts['default_ipv4']['address'] }}:5000/v3"}
+    - {section: "keystone_authtoken", option: "auth_type", value: "password"}
+    - {section: "keystone_authtoken", option: "auth_version", value: "v3"}
+  tags:
+    - qinling
+
+- name: Make sure that /etc/qinling/qinling.conf still have the correct permissions
+  file:
+    name: "/etc/qinling/qinling.conf"
+    owner: qinling
+    group: qinling
+    state: file
+  tags:
+    - qinling
+
+- name: Make sure requests > 2.21
+  pip:
+    name: requests >= 2.21.0
+
+- name: Render file for Populating Qinling database
+  template:
+    src: bootstrap-qinling-database.sh.jinja2
+    dest: /tmp/bootstrap-qinling-database.sh
+  tags:
+  - qinling
+
+- name: Populate Qinling database
+  shell: bash /tmp/bootstrap-qinling-database.sh
+  tags:
+  - qinling

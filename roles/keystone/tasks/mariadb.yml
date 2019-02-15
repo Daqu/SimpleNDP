@@ -1,0 +1,24 @@
+---
+
+- name: Install mariadb
+  apt: 
+    name: "{{ item }}"
+  loop:
+    - mariadb-server
+    - python-pymysql
+  tags:
+  - keystone
+
+- name: Config mariadb
+  template:
+    src: 99-openstack.cnf.jinja2
+    dest: /etc/mysql/mariadb.conf.d/99-openstack.cnf
+  tags:
+  - keystone
+
+- name: Restart mariadb
+  systemd:
+    state: restarted
+    name: mysql
+  tags:
+  - keystone

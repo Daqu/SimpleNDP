@@ -1,0 +1,4 @@
+CREATE DATABASE IF NOT EXISTS qinling;
+
+GRANT ALL PRIVILEGES ON qinling.* TO 'qinling'@'localhost' IDENTIFIED BY '{{ qinling_db_password }}';
+GRANT ALL PRIVILEGES ON qinling.* TO 'qinling'@'%' IDENTIFIED BY '{{ qinling_db_password }}';

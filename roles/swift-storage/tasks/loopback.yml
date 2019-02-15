@@ -1,0 +1,40 @@
+---
+# use loopback file as a device
+- name: Create loopback file
+  shell: "truncate -s {{ every_swfit_device_size }} /srv/{{ item }}"
+  when: create_disk == true
+  loop:
+    "{{ groups['devices'] }}"
+  tags:
+    - swift-storage
+
+- name: "Format disk sd*"
+  filesystem:
+    fstype: "{{ disk_format }}"
+    dev: "/srv/{{ item }}"
+  when: create_disk == true
+  loop:
+    "{{ groups['devices'] }}"
+  tags:
+    - swift-storage
+
+- name: Create mount point /srv/node/sd* for /srv/sd*
+  file:
+    path: "/srv/node/{{ item }}"
+    state: directory
+  loop:
+    "{{ groups['devices'] }}"
+  tags:
+    - swift-storage
+
+- name: Mount /srv/sd* on /srv/node/sd*
+  mount:
+    path: "/srv/node/{{ item }}"
+    src: "/srv/{{ item }}"
+    fstype: "{{ disk_format }}"
+    opts: "{{ mount_opts }}"
+    state: mounted
+  loop:
+    "{{ groups['devices'] }}"
+  tags:
+    - swift-storage
